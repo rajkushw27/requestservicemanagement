@@ -31,7 +31,7 @@ npm run dev
 
 Open **http://localhost:5173** (not 8080 — that's the API). The Vite dev server proxies
 `/api/*` to the backend, so there's nothing to configure. Seed data loads automatically on
-backend start: 20 people in a five-level org, six approval policies, eight live requests.
+backend start: 20 people in a five-level org, seven approval policies, nine live requests.
 
 H2 is in-memory, so **restarting the backend resets everything**, including who's logged in.
 That's normal for a demo — just log back in.
@@ -95,6 +95,11 @@ Other things worth poking at:
   policy's ₹50,00,000 threshold, so it needs three signatures instead of two — and the
   resolver skips the maker's own director entirely (their ₹50L limit doesn't cover it),
   climbing to VP level and then backfilling a third signer from Compliance.
+- **A four-level cascade, all the way to the CRO.** `REQ-1009` (`CAPITAL_EXPENDITURE`) needs
+  four sequential signatures, unconditionally — not amount-driven like the bump above, this
+  one always climbs the full chain: Manager (`emp-08`) → Director (`emp-04`) → VP (`emp-02`)
+  → CRO (`emp-01`). Stays PENDING through the first three approvals, only closes on the
+  fourth.
 - **Rejection.** Reject anything — a comment is mandatory, and one rejection closes the
   request regardless of how many approvals it already had.
 - **Policies page.** Edit a policy's signature count or SLA live, no redeploy. In-flight
@@ -284,9 +289,11 @@ A policy is what makes the service reusable. It is a row in the database, editab
 Seeded policies: `PAYMENT_LIMIT_CHANGE` (2, sequential, escalates after 48h),
 `KYC_RISK_RATING` (1, expires after 24h), `AML_CASE_CLOSURE` (2, parallel, auto-rejects
 after 12h), `HIGH_VALUE_TRANSFER` (2, or 3 above ₹50,00,000, escalates after 4h),
-`VENDOR_ONBOARDING` (2, sequential, escalates after 24h), `ACCESS_GRANT` (1, expires after 8h).
+`VENDOR_ONBOARDING` (2, sequential, escalates after 24h), `ACCESS_GRANT` (1, expires after 8h),
+`CAPITAL_EXPENDITURE` (4, sequential, always the full chain to the CRO, escalates after 72h).
 The first four happen to be financial because that's a recognizable demo domain — the last
-two are there specifically to show the policy shape doesn't care.
+three are there specifically to show the policy shape doesn't care, including one that shows
+`minApprovals` isn't capped at two or three — set it to whatever your governance model needs.
 
 ## The org
 

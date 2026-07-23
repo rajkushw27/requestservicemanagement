@@ -79,6 +79,10 @@ flowchart TD
 - **A chain can skip rungs.** `PolicyEngine` only adds a candidate if their own
   `approvalLimit` covers the request amount. A director whose limit is too low is climbed
   past, not stopped at — see the "high-value chain skips a rung" beat in the demo script.
+- **A chain can also just be tall.** `minApprovals` isn't capped at two or three — the
+  seeded `CAPITAL_EXPENDITURE` policy needs 4, and for a maker like `emp-13` that resolves to
+  the full vertical climb drawn above: `emp-08` (Manager) → `emp-04` (Director) → `emp-02`
+  (VP) → `emp-01` (CRO). See `REQ-1009` in the demo script.
 
 Every account here logs in with **user ID = employee ID, password `test123`** — see the
 repo README for the full table and the demo script for who to use when.

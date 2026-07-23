@@ -86,6 +86,14 @@ public class DemoDataSeeder {
                     1, ApprovalMode.SEQUENTIAL, "APPROVER_L2,APPROVER_L3",
                     true, null, 480, TimeoutAction.EXPIRE);
 
+            // Four-signature example: governance-driven (every level up to the CRO must sign,
+            // full stop) rather than amount-driven like HIGH_VALUE_TRANSFER's bump. No amount
+            // threshold and the seeded request below carries no amount, so approval-limit
+            // checks never enter into it — this is purely "climb the org chart four rungs."
+            policy(policies, "CAPITAL_EXPENDITURE", "Approve a major capital expenditure, signed off all the way to the CRO",
+                    4, ApprovalMode.SEQUENTIAL, "APPROVER_L1,APPROVER_L2,APPROVER_L3",
+                    true, null, 4320, TimeoutAction.ESCALATE);
+
             // ---- a few live requests ----
             approvals.submit(new SubmitRequest("REQ-1001", "default", "CUSTOMER_LIMIT", "CUST-88213",
                     Operation.UPDATE, "Raise daily transfer limit for Sundar Traders",
@@ -135,8 +143,14 @@ public class DemoDataSeeder {
                     map("access", "READ_ONLY", "system", "PAYMENTS_DB"),
                     null, "ACCESS_GRANT", null), "emp-20");
 
+            approvals.submit(new SubmitRequest("REQ-1009", "default", "CAPEX", "CAPEX-2201",
+                    Operation.CREATE, "Approve backup power infrastructure purchase for Mumbai data center",
+                    null,
+                    map("vendor", "PowerSecure Systems", "estimatedCost", "₹12,00,000", "category", "INFRASTRUCTURE"),
+                    null, "CAPITAL_EXPENDITURE", null), "emp-13");
+
             log.info("Seeded {} people, {} policies, {} requests",
-                    employees.count(), policies.count(), 8);
+                    employees.count(), policies.count(), 9);
         };
     }
 
