@@ -31,18 +31,22 @@ public class ApprovalRequestController {
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> submit(@RequestHeader("Authorization") String authorization,
+    public ResponseEntity<Map<String, Object>> submit(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                                        @RequestHeader(value = "X-Api-Key", required = false) String apiKey,
+                                                        @RequestHeader(value = "X-Acting-As", required = false) String actingAs,
                                                         @RequestBody Dtos.SubmitRequest body) {
-        String makerId = auth.currentUser(authorization);
+        String makerId = auth.currentUser(authorization, apiKey, actingAs);
         ApprovalRequest req = approvals.submit(body, makerId);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(detail(req));
     }
 
     @GetMapping
-    public List<Map<String, Object>> list(@RequestHeader("Authorization") String authorization,
+    public List<Map<String, Object>> list(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                           @RequestHeader(value = "X-Api-Key", required = false) String apiKey,
+                                           @RequestHeader(value = "X-Acting-As", required = false) String actingAs,
                                            @RequestParam(required = false) String inboxFor,
                                            @RequestParam(required = false) String submittedBy) {
-        auth.currentUser(authorization);
+        auth.currentUser(authorization, apiKey, actingAs);
         List<ApprovalRequest> results;
         if (inboxFor != null) results = approvals.inboxFor(inboxFor);
         else if (submittedBy != null) results = approvals.submittedBy(submittedBy);
@@ -51,28 +55,39 @@ public class ApprovalRequestController {
     }
 
     @GetMapping("/{id}")
-    public Map<String, Object> get(@RequestHeader("Authorization") String authorization, @PathVariable String id) {
-        auth.currentUser(authorization);
+    public Map<String, Object> get(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                    @RequestHeader(value = "X-Api-Key", required = false) String apiKey,
+                                    @RequestHeader(value = "X-Acting-As", required = false) String actingAs,
+                                    @PathVariable String id) {
+        auth.currentUser(authorization, apiKey, actingAs);
         return detail(approvals.load(id));
     }
 
     @GetMapping("/{id}/audit")
-    public List<AuditEvent> audit(@RequestHeader("Authorization") String authorization, @PathVariable String id) {
-        auth.currentUser(authorization);
+    public List<AuditEvent> audit(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                   @RequestHeader(value = "X-Api-Key", required = false) String apiKey,
+                                   @RequestHeader(value = "X-Acting-As", required = false) String actingAs,
+                                   @PathVariable String id) {
+        auth.currentUser(authorization, apiKey, actingAs);
         return approvals.auditFor(id);
     }
 
     @PostMapping("/{id}/decisions")
-    public Map<String, Object> decide(@RequestHeader("Authorization") String authorization,
+    public Map<String, Object> decide(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                       @RequestHeader(value = "X-Api-Key", required = false) String apiKey,
+                                       @RequestHeader(value = "X-Acting-As", required = false) String actingAs,
                                        @PathVariable String id, @RequestBody Dtos.DecideRequest body) {
-        String checkerId = auth.currentUser(authorization);
+        String checkerId = auth.currentUser(authorization, apiKey, actingAs);
         ApprovalRequest req = approvals.decide(id, checkerId, body);
         return detail(req);
     }
 
     @PostMapping("/{id}/recall")
-    public Map<String, Object> recall(@RequestHeader("Authorization") String authorization, @PathVariable String id) {
-        String makerId = auth.currentUser(authorization);
+    public Map<String, Object> recall(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                       @RequestHeader(value = "X-Api-Key", required = false) String apiKey,
+                                       @RequestHeader(value = "X-Acting-As", required = false) String actingAs,
+                                       @PathVariable String id) {
+        String makerId = auth.currentUser(authorization, apiKey, actingAs);
         ApprovalRequest req = approvals.recall(id, makerId);
         return detail(req);
     }

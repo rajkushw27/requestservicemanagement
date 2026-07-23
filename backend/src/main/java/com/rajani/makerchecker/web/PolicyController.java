@@ -22,15 +22,19 @@ public class PolicyController {
     }
 
     @GetMapping
-    public List<ApprovalPolicy> list(@RequestHeader("Authorization") String authorization) {
-        auth.currentUser(authorization);
+    public List<ApprovalPolicy> list(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                      @RequestHeader(value = "X-Api-Key", required = false) String apiKey,
+                                      @RequestHeader(value = "X-Acting-As", required = false) String actingAs) {
+        auth.currentUser(authorization, apiKey, actingAs);
         return policies.findAll();
     }
 
     @PutMapping("/{key}")
-    public ApprovalPolicy update(@RequestHeader("Authorization") String authorization,
+    public ApprovalPolicy update(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                  @RequestHeader(value = "X-Api-Key", required = false) String apiKey,
+                                  @RequestHeader(value = "X-Acting-As", required = false) String actingAs,
                                   @PathVariable String key, @RequestBody Dtos.PolicyUpdateRequest body) {
-        auth.currentUser(authorization);
+        auth.currentUser(authorization, apiKey, actingAs);
         ApprovalPolicy policy = policies.findById(key)
                 .orElseThrow(() -> ApprovalException.notFound("Unknown policyKey: " + key));
 

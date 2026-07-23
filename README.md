@@ -1,9 +1,13 @@
 # Counterfoil — a generic maker-checker service
 
-A pluggable four-eyes approval service. Any system can submit a change for approval; this
-service works out who must sign it, tracks the signatures, enforces segregation of duties,
-and reports the outcome. It never interprets the payload, so the same service handles a KYC
-rating change, a payment limit, or anything else you point at it.
+A pluggable four-eyes approval service, built to sit in the middle of an org and be
+integrated by whatever systems need a change signed off — not a payments app. Any system
+can submit a change for approval; this service works out who must sign it (from the org
+chart and a policy), tracks the signatures, enforces segregation of duties, and reports the
+outcome. It never interprets the payload, so the same service handles a KYC rating change, a
+vendor onboarding, an access grant, a payment limit, or anything else you point at it — see
+"Integrating from another system" below for how another system plugs in without a human ever
+opening this app's UI.
 
 Java 21 · Spring Boot 3.3 · JPA · H2 (Postgres-ready) backend, with a React (Vite) frontend.
 Browser demo only — no iOS/native app in this version.
@@ -27,7 +31,7 @@ npm run dev
 
 Open **http://localhost:5173** (not 8080 — that's the API). The Vite dev server proxies
 `/api/*` to the backend, so there's nothing to configure. Seed data loads automatically on
-backend start: 20 people in a five-level org, four approval policies, six live requests.
+backend start: 20 people in a five-level org, six approval policies, eight live requests.
 
 H2 is in-memory, so **restarting the backend resets everything**, including who's logged in.
 That's normal for a demo — just log back in.
@@ -94,6 +98,10 @@ Other things worth poking at:
   submissions see the change.
 - **New request.** Raise your own from the "+ New request" button — pick a policy, add
   before/after fields, submit, then switch identities to sign it.
+- **It's not just payments.** `REQ-1007` (vendor onboarding, `emp-14`'s submission) and
+  `REQ-1008` (a system access grant, `emp-20`'s submission) use the exact same engine as the
+  financial ones — different `entityType`, different fields in before/after, same
+  `ApprovalService` that never looks inside either.
 
 ## Deploy it
 
@@ -138,11 +146,48 @@ backend's URL before building (it's read at build time, not runtime).
 
 ---
 
+## Integrating from another system
+
+The React app is one client of this API — a human-facing one. A workflow engine, an admin
+panel, a queue consumer, anything else in your org can call the same endpoints directly,
+with no human login involved. Two ways in:
+
+| | Who | How |
+|---|---|---|
+| **Human, via this UI** | Someone opens Counterfoil and signs in | `Authorization: Bearer <token>` from `POST /api/v1/auth/login` |
+| **A system, no human in the loop** | Your service calls the API directly | `X-Api-Key: <key>` + `X-Acting-As: <employeeId>` |
+
+Every endpoint that currently checks `Authorization` accepts either. For the API-key path:
+
+```http
+POST /api/v1/approval-requests
+X-Api-Key: demo-integration-key-change-me
+X-Acting-As: emp-14
+```
+
+`X-Api-Key` is checked against `MAKERCHECKER_API_KEY` (one shared demo key — set your own
+before deploying anywhere real). `X-Acting-As` is the employee id your system is submitting
+or deciding on behalf of; the service trusts that assertion once the key matches — a real
+integration would map the caller's own authenticated identity (OAuth client, mTLS cert)
+to an employee id server-side rather than trust a client-supplied header (see CLAUDE.md).
+Missing `X-Acting-As` with a valid key gets a 400 telling you so; a bad key gets a 401.
+
+**Full API contract, browsable:** once the backend's running, open
+**http://localhost:8080/swagger-ui.html** (or `/v3/api-docs` for the raw OpenAPI JSON) —
+every endpoint, every request/response shape, both auth schemes, without reading a line of
+Java.
+
+**Outcome delivery is already push, not poll** — see "Outcome callback" below. A calling
+system submits a request, gets a `202 Accepted` back, and finds out what happened via a
+webhook when it's decided. It never needs to ask this service "is it done yet?"
+
+---
+
 ## API
 
 Sign in first: `POST /api/v1/auth/login` with `{"username": "emp-15", "password":
 "test123"}` returns a bearer token. Send it as `Authorization: Bearer <token>` on everything
-else.
+else — or use the `X-Api-Key` + `X-Acting-As` pair above if you're a system, not a person.
 
 ### Submit for approval
 
@@ -198,6 +243,7 @@ instead of silently overwriting them. Comments are mandatory unless you are appr
 | `POST /api/v1/approval-requests/{id}/recall` | maker withdraws |
 | `GET /api/v1/people` | the demo org |
 | `GET /api/v1/policies` · `PUT /api/v1/policies/{key}` | read and edit rules at runtime |
+| `GET /swagger-ui.html` · `GET /v3/api-docs` | browsable / machine-readable API contract |
 
 ### Outcome callback
 
@@ -233,7 +279,10 @@ A policy is what makes the service reusable. It is a row in the database, editab
 
 Seeded policies: `PAYMENT_LIMIT_CHANGE` (2, sequential, escalates after 48h),
 `KYC_RISK_RATING` (1, expires after 24h), `AML_CASE_CLOSURE` (2, parallel, auto-rejects
-after 12h), `HIGH_VALUE_TRANSFER` (2, or 3 above ₹50,00,000, escalates after 4h).
+after 12h), `HIGH_VALUE_TRANSFER` (2, or 3 above ₹50,00,000, escalates after 4h),
+`VENDOR_ONBOARDING` (2, sequential, escalates after 24h), `ACCESS_GRANT` (1, expires after 8h).
+The first four happen to be financial because that's a recognizable demo domain — the last
+two are there specifically to show the policy shape doesn't care.
 
 ## The org
 

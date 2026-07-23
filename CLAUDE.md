@@ -45,22 +45,32 @@ backend/src/main/java/com/rajani/makerchecker/
               TokenAuth = demo session store (see Identity below).
   web/        REST controllers, DTOs (records), ViewMapper, exception handler,
               AuthController + AuthSupport for login/session resolution.
-  config/     DemoDataSeeder — 20-person org, 4 policies, 6 live requests. WebConfig — CORS.
+  config/     DemoDataSeeder — 20-person org, 6 policies, 8 live requests. WebConfig — CORS.
+            OpenApiConfig — Swagger UI metadata (/swagger-ui.html, /v3/api-docs).
 frontend/     React (Vite) SPA. Plain CSS, no component library, no build step surprises.
 ```
 
 ## Identity
 
-Each of the 20 seeded employees is a login account: **user ID = employee ID (e.g. `emp-15`),
-password `test123` for all of them** (see README for the full list / quick picks on the login
-screen). `POST /api/v1/auth/login` checks the password and issues an opaque bearer token;
-`TokenAuth` holds an in-memory `token -> employeeId` map that is gone on restart, same as
-everything else in H2. This is still not real auth — there's no password hashing, no
-expiry, no refresh — it exists so the demo has a login screen and a session per person
-instead of a raw `X-User-Id` header. Replacing it with a real JWT filter is still the first
-thing to do before this touches anything real (see below). Controllers resolve the acting
-employee from the bearer token via `AuthSupport.currentUser(authorizationHeader)`; do not
-scatter identity lookups through the service layer.
+Two callers, two paths, both resolved in one place — `AuthSupport.currentUser(authorization,
+apiKey, actingAs)`. Do not scatter identity lookups through the service layer; it enters at
+the controller and is passed down as a plain `String userId`, same as before.
+
+- **The demo UI (a human):** each of the 20 seeded employees is a login account — **user ID
+  = employee ID (e.g. `emp-15`), password `test123` for all of them** (see README for the
+  full list / quick picks on the login screen). `POST /api/v1/auth/login` checks the
+  password and issues an opaque bearer token; `TokenAuth` holds an in-memory
+  `token -> employeeId` map that is gone on restart, same as everything else in H2.
+- **An integrating system (no human in the loop):** `X-Api-Key: <key>` (checked against
+  `makerchecker.integration.api-key`, one shared demo key) plus `X-Acting-As: <employeeId>`
+  — the calling system asserts which employee it's acting for, and this demo trusts that
+  assertion outright once the key matches. Works on every endpoint that takes an
+  `Authorization` header today; see README "Integrating from another system".
+
+Neither path is real auth — no password hashing, no key rotation, no per-system scoping,
+no expiry. That's still the first thing to change before this touches anything real: a JWT
+filter for humans, and per-integration OAuth client-credentials (or mTLS) mapped server-side
+to an employee id for systems, replacing the client-asserted `X-Acting-As`.
 
 ## Running
 
@@ -79,7 +89,10 @@ usually what you want for a demo, but it also means every login session resets o
    turn-taking, the high-value approver bump) then `ApprovalServiceTest` (idempotent submit,
    double-decision rejection, SLA transitions).
 2. **Real auth.** Replace `TokenAuth`'s in-memory map and plaintext password check with a
-   real identity provider (JWT filter, hashed passwords, expiry) — see Identity above.
+   real identity provider for humans (JWT filter, hashed passwords, expiry), and replace the
+   single shared `X-Api-Key` with per-system OAuth client-credentials or mTLS, with the
+   caller's identity mapped server-side to an employee id instead of trusting a
+   client-supplied `X-Acting-As` — see Identity above.
 3. **Postgres + Flyway.** `ddl-auto: update` is fine for a demo and wrong for anything else.
 4. **ShedLock** on `SlaSweeper` and `OutboxRelay` before running more than one replica.
 5. **Delegation / out-of-office**, so an approver can hand their queue to someone else —

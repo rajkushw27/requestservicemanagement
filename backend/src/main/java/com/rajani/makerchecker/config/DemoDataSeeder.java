@@ -73,6 +73,19 @@ public class DemoDataSeeder {
                     2, ApprovalMode.SEQUENTIAL, "APPROVER_L2,APPROVER_L3",
                     true, new BigDecimal("5000000"), 240, TimeoutAction.ESCALATE);
 
+            // Two non-financial policies — the payment/KYC/AML ones above are just sample
+            // content. The service itself never looks inside before/after, so any domain
+            // that can name an entityType and describe a before/after state fits the same
+            // engine: vendor onboarding, access grants, HR changes, whatever a calling
+            // system needs signed off.
+            policy(policies, "VENDOR_ONBOARDING", "Approve a new vendor before onboarding",
+                    2, ApprovalMode.SEQUENTIAL, "APPROVER_L1,APPROVER_L2,APPROVER_L3",
+                    true, null, 1440, TimeoutAction.ESCALATE);
+
+            policy(policies, "ACCESS_GRANT", "Grant elevated system access to an employee",
+                    1, ApprovalMode.SEQUENTIAL, "APPROVER_L2,APPROVER_L3",
+                    true, null, 480, TimeoutAction.EXPIRE);
+
             // ---- a few live requests ----
             approvals.submit(new SubmitRequest("REQ-1001", "default", "CUSTOMER_LIMIT", "CUST-88213",
                     Operation.UPDATE, "Raise daily transfer limit for Sundar Traders",
@@ -110,8 +123,20 @@ public class DemoDataSeeder {
                     map("status", "ESCALATED", "disposition", "SAR_CANDIDATE"),
                     null, "AML_CASE_CLOSURE", null), "emp-18");
 
+            approvals.submit(new SubmitRequest("REQ-1007", "default", "VENDOR", "VEND-2201",
+                    Operation.CREATE, "Onboard new logistics vendor Meridian Freight",
+                    null,
+                    map("status", "APPROVED_VENDOR", "riskTier", "LOW", "category", "LOGISTICS"),
+                    null, "VENDOR_ONBOARDING", null), "emp-14");
+
+            approvals.submit(new SubmitRequest("REQ-1008", "default", "SYSTEM_ACCESS", "ACCESS-3390",
+                    Operation.UPDATE, "Grant production database read access to new hire",
+                    map("access", "NONE"),
+                    map("access", "READ_ONLY", "system", "PAYMENTS_DB"),
+                    null, "ACCESS_GRANT", null), "emp-20");
+
             log.info("Seeded {} people, {} policies, {} requests",
-                    employees.count(), policies.count(), 6);
+                    employees.count(), policies.count(), 8);
         };
     }
 

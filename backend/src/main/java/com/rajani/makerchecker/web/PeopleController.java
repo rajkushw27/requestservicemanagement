@@ -21,8 +21,10 @@ public class PeopleController {
     }
 
     @GetMapping
-    public List<Dtos.EmployeeView> list(@RequestHeader("Authorization") String authorization) {
-        auth.currentUser(authorization);
+    public List<Dtos.EmployeeView> list(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                         @RequestHeader(value = "X-Api-Key", required = false) String apiKey,
+                                         @RequestHeader(value = "X-Acting-As", required = false) String actingAs) {
+        auth.currentUser(authorization, apiKey, actingAs);
         return employees.findAllByOrderByIdAsc().stream().map(ViewMapper::toView).toList();
     }
 }
