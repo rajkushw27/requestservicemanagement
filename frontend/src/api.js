@@ -1,4 +1,6 @@
-const BASE = '/api/v1'
+// In dev, Vite proxies /api to localhost:8080 (see vite.config.js). In a static-hosted
+// production build there's no proxy, so VITE_API_BASE must point at the deployed API origin.
+const BASE = `${import.meta.env.VITE_API_BASE || ''}/api/v1`
 
 class ApiError extends Error {
   constructor(status, message) {

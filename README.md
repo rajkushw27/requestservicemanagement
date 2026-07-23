@@ -99,16 +99,42 @@ Other things worth poking at:
 
 Both the backend and frontend are ordinary standalone builds — no shared infra assumptions.
 
-**Backend:** `backend/Dockerfile` builds a self-contained jar (H2 in-memory, nothing to
-provision). `docker build -t maker-checker ./backend && docker run -p 8080:8080
-maker-checker`. For persistence, provision Postgres and set `SPRING_DATASOURCE_URL`,
+### Free hosting on Render (both halves, one dashboard)
+
+`render.yaml` at the repo root is a Render Blueprint: it defines the backend as a free
+Docker web service (`maker-checker-api`) and the frontend as a free static site
+(`maker-checker-frontend`), and wires them to each other via env vars
+(`MAKERCHECKER_CORS_ALLOWED_ORIGINS` on the backend, `VITE_API_BASE` on the frontend, baked
+in at build time).
+
+1. Push this repo to GitHub.
+2. In the Render dashboard: **New → Blueprint**, pick the repo. Render reads `render.yaml`
+   and proposes both services — confirm and deploy.
+3. **Name collisions:** Render subdomains (`<name>.onrender.com`) are shared across all
+   Render users. If `maker-checker-api` or `maker-checker-frontend` is already taken,
+   Render silently assigns a different name, and the cross-wired env vars above will point
+   at the wrong URL. After the first deploy, check the actual URLs Render assigned — if
+   they don't match what's in `render.yaml`, update `MAKERCHECKER_CORS_ALLOWED_ORIGINS` on
+   the backend service and `VITE_API_BASE` on the frontend service in the Render dashboard
+   to the real URLs, then trigger a manual redeploy of the frontend (env vars are baked in
+   at build time, so it needs a rebuild, not just a restart).
+4. Free-tier web services spin down after 15 minutes idle and take ~30-50s to wake on the
+   next request — normal for a demo you're driving live, just expect that first load.
+   The static site (frontend) doesn't sleep.
+5. Data is H2 in-memory, so every backend restart (including the idle spin-down/wake cycle)
+   resets the seed data and logs everyone out.
+
+### Other options
+
+**Backend anywhere else:** `backend/Dockerfile` builds a self-contained jar — `docker build
+-t maker-checker ./backend && docker run -p 8080:8080 maker-checker` runs it anywhere Docker
+runs. For persistence, provision Postgres and set `SPRING_DATASOURCE_URL`,
 `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` — the driver is already on the
 classpath.
 
-**Frontend:** `npm run build` in `frontend/` produces a static `dist/` you can serve from
-any static host (Vercel, Netlify, Nginx, S3). Point it at your deployed backend by setting
-the dev proxy target or, for production, fronting both behind the same reverse proxy so
-`/api` reaches the backend.
+**Frontend anywhere else:** `npm run build` in `frontend/` produces a static `dist/` —
+deployable to Vercel, Netlify, Nginx, S3, or any static host. Set `VITE_API_BASE` to your
+backend's URL before building (it's read at build time, not runtime).
 
 ---
 
