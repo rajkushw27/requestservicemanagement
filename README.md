@@ -295,6 +295,8 @@ limits run from ₹10,00,000 at manager level to ₹10,00,00,000 at the top, so 
 resolver has to walk far enough up the tree to find someone who can actually authorise the
 amount. That is the bit worth showing in a demo.
 
+Full hierarchy diagram, with reporting lines and approval limits: **[docs/org-chart.md](docs/org-chart.md)**.
+
 ## What is deliberately missing
 
 Real auth (see CLAUDE.md — the login is a demo convenience, not security), no tests, no
