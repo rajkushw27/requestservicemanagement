@@ -87,10 +87,14 @@ flow below. The full org:
 Other things worth poking at:
 
 - **Sequential vs parallel.** `REQ-1001` is sequential (one approver at a time, in order).
-  `REQ-1003` (`emp-11`'s inbox) uses a parallel AML policy — either of two approvers can sign
-  first.
+  `REQ-1003` uses a parallel AML policy (lands in `emp-08` and `emp-09`'s inboxes) — either
+  approver can sign first. Note this policy has `requireManagerChain: false`, so it draws
+  checkers from anyone org-wide with the right role/limit, not the maker's own department —
+  that's why two Payments managers end up checking an AML case.
 - **The high-value bump.** `REQ-1004` is ₹84,00,000, above the `HIGH_VALUE_TRANSFER`
-  policy's ₹50,00,000 threshold, so it needs three signatures instead of two.
+  policy's ₹50,00,000 threshold, so it needs three signatures instead of two — and the
+  resolver skips the maker's own director entirely (their ₹50L limit doesn't cover it),
+  climbing to VP level and then backfilling a third signer from Compliance.
 - **Rejection.** Reject anything — a comment is mandatory, and one rejection closes the
   request regardless of how many approvals it already had.
 - **Policies page.** Edit a policy's signature count or SLA live, no redeploy. In-flight
